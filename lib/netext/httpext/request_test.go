@@ -126,10 +126,11 @@ func TestMakeRequestError(t *testing.T) {
 		}
 		req, _ := http.NewRequest("GET", srv.URL, nil)
 		preq := &ParsedHTTPRequest{
-			Req:     req,
-			URL:     &URL{u: req.URL},
-			Body:    new(bytes.Buffer),
-			Timeout: 10 * time.Second,
+			Req:         req,
+			URL:         &URL{u: req.URL},
+			Body:        new(bytes.Buffer),
+			Timeout:     10 * time.Second,
+			TagsAndMeta: state.Tags.GetCurrentValues(),
 		}
 
 		res, err := MakeRequest(ctx, state, preq)
@@ -185,6 +186,7 @@ func TestResponseStatus(t *testing.T) {
 					Body:         new(bytes.Buffer),
 					Timeout:      10 * time.Second,
 					ResponseType: ResponseTypeNone,
+					TagsAndMeta:  state.Tags.GetCurrentValues(),
 				}
 
 				ctx, cancel := context.WithCancel(context.Background())
@@ -264,6 +266,7 @@ func TestMakeRequestTimeoutInTheMiddle(t *testing.T) {
 		Body:             new(bytes.Buffer),
 		Timeout:          50 * time.Millisecond,
 		ResponseCallback: func(i int) bool { return i == 0 },
+		TagsAndMeta:      state.Tags.GetCurrentValues(),
 	}
 
 	res, err := MakeRequest(ctx, state, preq)
@@ -274,7 +277,6 @@ func TestMakeRequestTimeoutInTheMiddle(t *testing.T) {
 	allSamples := sampleCont.GetSamples()
 	require.Len(t, allSamples, 9)
 	expTags := map[string]string{
-		"error":             "request timeout",
 		"error_code":        "1050",
 		"status":            "0",
 		"expected_response": "true", // we wait for status code 0
@@ -282,8 +284,12 @@ func TestMakeRequestTimeoutInTheMiddle(t *testing.T) {
 		"url":               srv.URL,
 		"name":              srv.URL,
 	}
+	expMetadata := map[string]string{
+		"error": "request timeout",
+	}
 	for _, s := range allSamples {
 		assert.Equal(t, expTags, s.Tags.Map())
+		assert.Equal(t, expMetadata, s.Metadata)
 	}
 }
 
@@ -340,6 +346,7 @@ func TestTrailFailed(t *testing.T) {
 				Body:             new(bytes.Buffer),
 				Timeout:          10 * time.Millisecond,
 				ResponseCallback: responseCallback,
+				TagsAndMeta:      state.Tags.GetCurrentValues(),
 			}
 			res, err := MakeRequest(ctx, state, preq)
 
@@ -406,6 +413,7 @@ func TestMakeRequestDialTimeout(t *testing.T) {
 		Body:             new(bytes.Buffer),
 		Timeout:          500 * time.Millisecond,
 		ResponseCallback: func(i int) bool { return i == 0 },
+		TagsAndMeta:      state.Tags.GetCurrentValues(),
 	}
 
 	res, err := MakeRequest(ctx, state, preq)
@@ -416,7 +424,6 @@ func TestMakeRequestDialTimeout(t *testing.T) {
 	allSamples := sampleCont.GetSamples()
 	require.Len(t, allSamples, 9)
 	expTags := map[string]string{
-		"error":             "dial: i/o timeout",
 		"error_code":        "1211",
 		"status":            "0",
 		"expected_response": "true", // we wait for status code 0
@@ -424,8 +431,12 @@ func TestMakeRequestDialTimeout(t *testing.T) {
 		"url":               req.URL.String(),
 		"name":              req.URL.String(),
 	}
+	expMetadata := map[string]string{
+		"error": "dial: i/o timeout",
+	}
 	for _, s := range allSamples {
 		assert.Equal(t, expTags, s.Tags.Map())
+		assert.Equal(t, expMetadata, s.Metadata)
 	}
 }
 
@@ -459,6 +470,7 @@ func TestMakeRequestTimeoutInTheBegining(t *testing.T) {
 		Body:             new(bytes.Buffer),
 		Timeout:          50 * time.Millisecond,
 		ResponseCallback: func(i int) bool { return i == 0 },
+		TagsAndMeta:      state.Tags.GetCurrentValues(),
 	}
 
 	res, err := MakeRequest(ctx, state, preq)
@@ -469,7 +481,6 @@ func TestMakeRequestTimeoutInTheBegining(t *testing.T) {
 	allSamples := sampleCont.GetSamples()
 	require.Len(t, allSamples, 9)
 	expTags := map[string]string{
-		"error":             "request timeout",
 		"error_code":        "1050",
 		"status":            "0",
 		"expected_response": "true", // we wait for status code 0
@@ -477,7 +488,11 @@ func TestMakeRequestTimeoutInTheBegining(t *testing.T) {
 		"url":               srv.URL,
 		"name":              srv.URL,
 	}
+	expMetadata := map[string]string{
+		"error": "request timeout",
+	}
 	for _, s := range allSamples {
 		assert.Equal(t, expTags, s.Tags.Map())
+		assert.Equal(t, expMetadata, s.Metadata)
 	}
 }

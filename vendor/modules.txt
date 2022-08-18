@@ -78,7 +78,7 @@ github.com/grafana/xk6-redis/redis
 # github.com/grafana/xk6-timers v0.1.1
 ## explicit; go 1.17
 github.com/grafana/xk6-timers/timers
-# github.com/grafana/xk6-websockets v0.1.2-0.20220817120231-7b493256b2f4
+# github.com/grafana/xk6-websockets v0.1.2-0.20220819055253-8d99c89c61df
 ## explicit; go 1.17
 github.com/grafana/xk6-websockets/websockets
 # github.com/inconshreveable/mousetrap v1.0.0
