@@ -3,9 +3,11 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/url"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +31,10 @@ func testRuntimeOptionsCase(t *testing.T, tc runtimeOptionsTestCase) {
 	flags := runtimeOptionFlagSet(tc.useSysEnv)
 	require.NoError(t, flags.Parse(tc.cliFlags))
 
-	rtOpts, err := getRuntimeOptions(flags, tc.systemEnv)
+	logger := logrus.New()
+	logger.Out = io.Discard
+
+	rtOpts, err := getRuntimeOptions(logger, flags, tc.systemEnv)
 	if tc.expErr {
 		require.Error(t, err)
 		return
@@ -113,11 +118,12 @@ func TestRuntimeOptions(t *testing.T) {
 	runtimeOptionsTestCases := map[string]runtimeOptionsTestCase{
 		"empty env": {
 			useSysEnv: true,
+			systemEnv: map[string]string{},
 			// everything else is empty
 			expRTOpts: lib.RuntimeOptions{
 				IncludeSystemEnvVars: null.NewBool(true, false),
 				CompatibilityMode:    defaultCompatMode,
-				Env:                  nil,
+				Env:                  map[string]string{},
 			},
 		},
 		"disabled sys env by default": {
