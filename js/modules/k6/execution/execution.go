@@ -215,14 +215,19 @@ func (mi *ModuleInstance) newVUInfo() (*goja.Object, error) {
 	tags := &tagsDynamicObject{runtime: rt, state: vuState}
 	tagsObj := rt.NewDynamicObject(tags)
 
-	// TODO: change the prototype of the tags dynamic object so it has a new
+	// We change the prototype of the tags dynamic object, so it has a new
 	// isIndexed(key) method that returns true if the specific tag is indexed
-	// (stored in the TagSet) or false if not (stored in the metadata string
-	// map) or undefined if the tag doesn't exist?
-	// tagsObj.SetPrototype(...)
+	// (stored in the TagSet), or false if not (stored in the metadata string
+	// map), or undefined if the tag doesn't exist.
+	proto := rt.NewObject()
+	if err := proto.Set("isIndexed", tags.isIndexed); err != nil {
+		return o, err
+	}
+	if err := tagsObj.SetPrototype(proto); err != nil {
+		return o, err
+	}
 
-	err = o.Set("tags", tagsObj)
-	return o, err
+	return o, o.Set("tags", tagsObj)
 }
 
 func newInfoObj(rt *goja.Runtime, props map[string]func() interface{}) (*goja.Object, error) {
@@ -306,6 +311,17 @@ type tagsDynamicObject struct {
 	state   *lib.State
 }
 
+func (o *tagsDynamicObject) isIndexed(key string) goja.Value {
+	tcv := o.state.Tags.GetCurrentValues()
+	if _, ok := tcv.Tags.Get(key); ok {
+		return o.runtime.ToValue(true)
+	}
+	if _, ok := tcv.Metadata[key]; ok {
+		return o.runtime.ToValue(false)
+	}
+	return goja.Undefined()
+}
+
 // Get a property value for the key. May return nil if the property does not exist.
 func (o *tagsDynamicObject) Get(key string) goja.Value {
 	tcv := o.state.Tags.GetCurrentValues()
@@ -321,8 +337,7 @@ func (o *tagsDynamicObject) Get(key string) goja.Value {
 // Set a property value for the key. It returns true if succeed. String, Boolean
 // and Number types are implicitly converted to the goja's relative string
 // representation. Objects are checked and accepted if they contain the index
-// and value keys. In any other case, if the Throw option is set then an error
-// is raised otherwise just a Warning is written.
+// and value keys. In any other case, a TypeError is thrown.
 func (o *tagsDynamicObject) Set(key string, val goja.Value) bool {
 	var err error
 	o.state.Tags.Modify(func(tagsAndMeta *metrics.TagsAndMeta) {
